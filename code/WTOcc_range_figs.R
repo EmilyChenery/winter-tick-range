@@ -1,0 +1,255 @@
+
+###############################################################################
+## R code to reproduce statistical figures as shown in Chenery et al., 2022, 
+## "Revealing the Winter Tick's Range in North America: An Integrated 
+## Spatio-temporal Database  and Multi-source Analysis" ##
+## ---
+
+## Data required: Winter tick occurrence database (WTOcc_data.csv), available 
+# from Figshare DOI 10.6084/m9.figshare.20170952.
+
+
+
+### -- SETUP -- ###
+
+# load required packages
+library(data.table)#read in data file
+library(dplyr) #data filtering and subsetting
+library(ggplot2)#data visualization
+library(networkD3)#Sankey network diagram
+
+
+#set path to save files to
+path <- "C://Users/emily/OneDrive - University of Toronto/DOCS_MOVED_PCtoCloud_SORT/02 Manuscripts/05 Global_Distribution_Ch1/SUBMISSION docs/03 Figures/Individual_files/"
+  
+  
+  
+### -- DATA -- ### 
+
+# import data file
+wtd <- fread("C://Users/emily/OneDrive - University of Toronto/DOCS_MOVED_PCtoCloud_SORT/02 Manuscripts/05 Global_Distribution_Ch1/Data/FINAL_dataset/FINAL_FINAL/WTOcc_FULL_dataset_25Jun22.csv")
+
+
+
+### -- Data visualization -- ###
+
+
+## FIGURE 2(b) ##
+#
+# Number of records over time: delineating 4 time periods:
+# 1892-1949; 1950-1979; 1980-1999; 2000-2020
+
+# - produces a histogram with grayscale bars, plotting number of records against
+# decade.
+
+
+wtd$per <- as.factor(wtd$per)# set period as factor
+
+#plot
+
+p2b <- ggplot(wtd, aes(x = year, fill = per))+ 
+  geom_histogram(bins=41.5, color = "black", position = 'identity')+
+  theme_classic()+
+  labs(y = "Number of records",
+       x = "Decade")+
+  scale_x_continuous(breaks = seq(1860, 2020, by = 20))+
+  theme(text = element_text(family = "serif"),
+        legend.position = c(0.14, 0.8))+
+  scale_fill_brewer(palette = "Greys", na.value = "black")
+
+p2b <- p2b + 
+  theme(plot.title = element_text(family="serif"),
+        panel.grid.major.x = element_blank(),
+        legend.title = element_blank(),
+        panel.grid.major = element_line(colour = "grey86"),
+        text = element_text(family = "sans", size = 20),
+        axis.text.x = element_text(angle = 90, hjust=1.7, vjust=0.5))+
+  labs(x="")
+
+ggsave("Fig_2b_FINAL.tiff", path = path, width = 9.7, height = 3.7, device='tiff', dpi=400)
+
+
+
+## FIGURE 4 (panel)##
+#
+
+
+
+
+#(a)
+
+bm <- fread("C://Users/emily/OneDrive - University of Toronto/DOCS_MOVED_PCtoCloud_SORT/02 Manuscripts/05 Global_Distribution_Ch1/Data/FINAL_dataset/PanTHERIA_body_masses.csv")
+
+masses <- wtd %>% group_by(hostSpec)%>%
+                  summarise(n=n())
+
+masses <- merge(masses, bm)
+
+masses$adultMassKg <- as.factor(masses$adultMassKg)
+
+
+p4a <- ggplot(masses, aes(x = adultMassKg, y=n))+ 
+  geom_col(fill = "black", width=0.9)+
+  theme_classic()+
+  labs(x = "Host body mass (kg)",
+       y = "Number of records")+
+  scale_y_continuous(breaks = seq(0, 1600, by = 200))+
+  theme(text = element_text(family = "sans", size = 14),
+        axis.text.x=element_text(angle = 90, vjust=0.5),
+        panel.grid.major.y = element_line(colour = "gray", size = 0.5))
+
+ggsave("Fig_4a_FINAL.tiff", path = path, width = 7.2, height = 4.8, device='tiff', dpi=400)
+
+#(b)
+
+#prepare data frame
+hosts.hl <- wtd %>% filter(hostGen %in% c("Alces", "Bos", "Cervus", "Equus", "Odocoileus", "Rangifer")) %>%
+                    mutate(host = case_when(
+                                    hostGen=="Alces"~ "Moose: hairloss included",
+                                    hostGen=="Bos" ~"Cattle",
+                                    hostGen=="Cervus"~ "Elk",
+                                    hostGen=="Equus"~ "Horse",
+                                    hostGen=="Odocoileus"~ "Deer",
+                                    hostGen=="Rangifer"~ "Caribou", 
+                                    TRUE ~ hostGen),
+                           line = "a",
+                           shp = "a") %>%
+                    group_by(host, per, line, shp) %>%
+                    summarise(n=n())
+
+p4b <- hosts.hl %>% 
+            ggplot(aes(x= per,y=n)) +
+            geom_point(aes(color=host, shape = shp), size = 3) +
+            geom_line(aes(group = host, color = host, linetype= line), lwd = 1.25)+
+            theme_classic()+
+            theme(text = element_text(family= "sans", size = 16),
+                  panel.grid.major.y = element_line(colour = "gray", size = 0.5),
+                  legend.position = c(0.2, 0.7))+
+            labs(y="Number of records", x = "Years (grouped)")
+
+#data just for moose with hairloss record basis removed
+moose.nhl <- wtd %>% filter(hostCommon == "Moose", recBasis != "hairloss") %>%
+                            mutate(host = replace(hostCommon, hostCommon == "Moose", "Moose: hairloss removed"),
+                                   line = "b",
+                                   shp = "b") %>%
+                    group_by(host, per, line, shp) %>%
+                    summarise(n=n())
+
+p4b <- p4b +
+  geom_point(data=moose.nhl, aes(x=per, y=n, color=host, shape=shp), size=3)+
+  geom_line(data = moose.nhl, aes(x = per , y = n, group=host, color=host, linetype=line),lwd=1.25)+
+  scale_colour_manual(values=c("#CABCDA", "#8c96c6", "#41b6c4","#3690c0", "#88419d", "black", "black"))+
+  guides(linetype="none", shape="none")
+
+
+ggsave("Fig_4b_FINAL.tiff", path = path, width = 7.2, height = 4.8, device='tiff', dpi=400)
+
+
+## FIGURE 6 (panel)##
+#
+
+#(a) Data type
+
+p6a <- wtd %>% 
+              filter(year >1880)%>%
+              mutate(decade = year - year %% 10)%>%
+              group_by(decade, datType) %>%
+              summarise(recs = n()) %>%
+              ggplot(aes(x= decade, y = recs, fill = datType))+ 
+              geom_col()+
+              theme_classic()+
+              labs(y = "Number of Records")+
+              scale_x_continuous(breaks = seq(1890, 2020, by = 10))+
+              theme(axis.title.x = element_blank(),
+                    axis.text.x = element_text(),
+                    legend.title = element_blank(),
+                    panel.grid.major.x = element_blank(),
+                    panel.grid.major = element_line(colour = "grey86"),
+                    text = element_text(family = "sans", size=16),
+                    legend.position = c(0.18, 0.7))+
+              scale_fill_manual(values = c("#CABCDA","#8c96c6","#8c6bb1","#88419d","#6e016b"))
+
+
+#(b) Record basis
+
+p6b <- wtd %>% 
+              mutate(decade = year - year %% 10)%>%
+              group_by(decade, recBasis) %>%
+              summarise(recs = n()) %>%
+              filter(decade >1880)%>%
+              ggplot(aes(x= decade, y = recs, fill = recBasis))+ 
+              geom_col()+
+              theme_classic()+
+              labs(y = "Number of Records")+
+              scale_x_continuous(breaks = seq(1890, 2020, by = 10))+
+              theme(axis.title.x = element_blank(),
+                    axis.text.x = element_text(),
+                    legend.title = element_blank(),
+                    panel.grid.major.x = element_blank(),
+                    panel.grid.major = element_line(colour = "grey86"),
+                    text = element_text(family = "sans", size = 16),
+                    legend.position = c(0.15, 0.7))+
+              #scale_fill_discrete(name = "Host Species")+
+              scale_fill_manual(values = c("#d0d1e6","#a6bddb", "#3690c0", "#045a8d", "#023858", "#253494"))
+
+
+#(c) Sankey network diagram
+
+wtd$recBasis[is.na(wtd$recBasis)] <- "unknown"
+
+wtd$datType <- as.factor(wtd$datType) #change class for both to factors
+wtd$recBasis <- as.factor(wtd$recBasis)
+
+
+# Obtain a count of each record basis grouped by the data type
+
+sel.group <- wtd %>% group_by(datType, recBasis) %>% summarise(n = n())
+
+sel.group <- sel.group %>% arrange(datType, .by_group = TRUE)
+
+
+# STEP 2. CREATE NODES AND LINKS DATAFRAMES
+
+# create nodes dataframe
+dataType <- unique(as.character(sel.group$datType))
+
+Nodes <- data.frame(node = c(0:9), 
+                    name = c(dataType, "hairloss", "hide", "specimen", "other", "unknown"))
+
+#create links dataframe
+sel.group <- merge(sel.group, Nodes, by.x = "datType", by.y = "name")
+sel.group <- merge(sel.group, Nodes, by.x = "recBasis", by.y = "name")
+
+Links <- sel.group[ , c("node.x", "node.y", "n")]
+colnames(Links) <- c("source", "target", "value")
+
+# STEP 3. DRAW SANKEY NETWORK
+
+#set colours for nodes
+cols = 'd3.scaleOrdinal() .range(["#CABCDA", "#8c96c6", "#88419d", "#6e016b", "#d0d1e6","#a6bddb", "#3690c0", "#045a8d", "#023858", "#253494"])'
+
+
+#plot sankey network
+p4c <- networkD3::sankeyNetwork(Links = Links, Nodes = Nodes, 
+                                    Source = 'source', 
+                                    Target = 'target', 
+                                    Value = 'value', 
+                                    NodeID = 'name',
+                                    units = 'n',
+                                    fontSize = 16,
+                                    fontFamily = "sans-serif",
+                                    margin = list("left" = 100),
+                                    sinksRight = FALSE, 
+                                    colourScale = cols, 
+                                    nodeWidth = 40, 
+                                    nodePadding =20, iterations = 0)
+
+ggsave("Fig_6c_FINAL.tiff", path = path, width = 6.8, height = 6.2, device='tiff', dpi=400)
+
+# STEP 4. SAVE THE WIDGET - interactive version
+
+library(htmlwidgets)
+
+saveWidget(p4c, file="C://Users/emily/OneDrive - University of Toronto/DOCS_MOVED_PCtoCloud_SORT/02 Manuscripts/05 Global_Distribution_Ch1/Figures/Fig5c_sankeyv3_sans.html")
+
+
