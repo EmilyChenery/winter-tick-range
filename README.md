@@ -1,4 +1,4 @@
-# winter-tick-range
+# winter_tick_range
 R code to reproduce statistical figures in Chenery et al., 2022. Requires data file WTOcc_data.csv, which may be downloaded from Figshare at DOI 10.6084/m9.figshare.20170952.
 
 #### Figure 2(b) 
