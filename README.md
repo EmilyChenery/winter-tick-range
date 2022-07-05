@@ -1,5 +1,5 @@
 # winter_tick_range
-R code to reproduce statistical figures in Chenery et al., 2022. Requires data file WTOcc_data.csv, which may be downloaded from Figshare at DOI 10.6084/m9.figshare.20170952.
+R code to reproduce statistical figures in Chenery et al., 2022. Requires data file WTOcc_NAmerica_1869_2020.csv, which may be downloaded from Figshare at DOI 10.6084/m9.figshare.20170952. All other data sources required are available in the data folder of this github repo.
 
 #### Figure 2(b) 
 Number of <i> D. albipictus</i>  occurrence records present in the database, grouped by year (bars) and separated into four periods of reporting interest (shaded)
